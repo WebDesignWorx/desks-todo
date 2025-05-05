@@ -1,7 +1,8 @@
 /* Subtle shadows for tasks */
 body {
       font-family: 'Inter', sans-serif;
-
+      background-color: #f9fafb;
+          
 }
 .task-item {
   transition: box-shadow 0.2s ease-in-out, background-color 0.2s;
@@ -32,3 +33,12 @@ body {
 
 .task-item {border: none;}
 
+.task-row:hover .task-handle,
+.task-row:hover button {
+  opacity: 1 !important;
+}
+
+
+.task-checked-done {
+  @apply line-through text-gray-400;
+}

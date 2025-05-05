@@ -108,3 +108,45 @@ export async function deleteTask(id) {
     request.onerror = () => reject(request.error);
   });
 }
+
+
+// …existing openDB etc.
+
+/* delete permanently */
+export async function deleteTaskById(id) {
+  const db = await openDB();
+  const tx = db.transaction('tasks', 'readwrite');
+  tx.objectStore('tasks').delete(id);
+  return tx.done;
+}
+
+/* soft‑archive */
+export async function archiveTaskById(id) {
+  const db = await openDB();
+  const tx = db.transaction('tasks', 'readwrite');
+  const store = tx.objectStore('tasks');
+  const t = await store.get(id);
+  t.archived = true;
+  await store.put(t);
+  return t;
+}
+
+export async function pruneEmptyTasks(deskId) {
+  const db = await openDB();
+  const tx = db.transaction('tasks', 'readwrite');
+  const store = tx.objectStore('tasks');
+
+  // getAll wrapped in a Promise so we always receive an array
+  const all = await new Promise((res, rej) => {
+    const req = store.getAll();
+    req.onsuccess = () => res(req.result || []);
+    req.onerror = () => rej(req.error);
+  });
+
+  const empties = all.filter(
+    (t) => t.desk_id === deskId && (!t.name || !t.name.trim())
+  );
+
+  await Promise.all(empties.map((t) => store.delete(t.id)));
+  return empties.length;
+}

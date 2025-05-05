@@ -3,7 +3,10 @@ import { useParams } from 'react-router-dom';
 import {
   getTasksByDeskId,
   saveTask,
+  pruneEmptyTasks,
+  archiveTaskById,
 } from '../utils/idb.js';
+import ArchiveList from './ArchiveList';
 import TaskTree from '../components/TaskTree';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -13,10 +16,28 @@ export default function TaskPage() {
   const addInputRef = useRef(null);
 
   useEffect(() => {
-    getTasksByDeskId(deskId).then(setTasks);
+    (async () => {
+      await pruneEmptyTasks(deskId);
+      const t = await getTasksByDeskId(deskId);
+      setTasks(t);
+    })();
     localStorage.setItem('lastDesk', deskId);
   }, [deskId]);
+  const toggleDone = (id) =>
+  persist(
+    tasks.map((t) =>
+      t.id === id ? { ...t, done: !t.done } : t
+    )
+  );
 
+
+  const archive = async (id) => {
+    await archiveTaskById(id);
+    const fresh = await getTasksByDeskId(deskId);
+    setTasks(fresh);
+  };
+
+  const [showArc, setShowArc] = useState(false);
   const persist = (next) => {
     setTasks(next);
     next.forEach(saveTask);
@@ -75,11 +96,28 @@ export default function TaskPage() {
           tasks={tasks}
           setTasks={persist}
           onTextChange={onText}
+          onToggleDone={toggleDone}
           onAddBelow={onBelow}
           onAddChild={onChild}
+          onArchive={archive}
         />
       )}
+<button
+        className="text-blue-600 text-sm mt-2"
+        onClick={() => setShowArc(!showArc)}
+      >
+        {showArc ? '[ hide archive ]' : `[ show archive (${tasks.filter((t) => t.archived).length}) ]`}
+      </button>
 
+      {showArc && (
+        <ArchiveList
+          tasks={tasks.filter((t) => t.archived)}
+          refresh={async () => {
+            const fresh = await getTasksByDeskId(deskId);
+            setTasks(fresh);
+          }}
+        />
+      )}
       <div className="mt-auto pt-4">
         <input
           ref={addInputRef}
