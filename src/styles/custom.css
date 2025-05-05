@@ -1,0 +1,30 @@
+/* Subtle shadows for tasks */
+.task-item {
+  transition: box-shadow 0.2s ease-in-out, background-color 0.2s;
+}
+
+.task-item:hover {
+  background-color: #f9fafb;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+/* Depth indication with colored borders or indent lines */
+.task-depth-0 {
+  border-left: 4px solid #3b82f6; /* blue-500 */
+}
+
+.task-depth-1 {
+  border-left: 4px solid #10b981; /* green-500 */
+}
+
+.task-depth-2 {
+  border-left: 4px solid #f59e0b; /* amber-500 */
+}
+
+.task-depth-3 {
+  border-left: 4px solid #ef4444; /* red-500 */
+}
+
+
+.task-item {border: none;}
+
