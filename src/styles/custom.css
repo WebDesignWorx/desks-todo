@@ -1,4 +1,8 @@
 /* Subtle shadows for tasks */
+body {
+      font-family: 'Inter', sans-serif;
+
+}
 .task-item {
   transition: box-shadow 0.2s ease-in-out, background-color 0.2s;
 }
