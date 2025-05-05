@@ -1,74 +1,14 @@
+import TaskRow from './TaskRow';
 import {
-  DndContext,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  closestCenter,
+  DndContext, PointerSensor, useSensor, useSensors, closestCenter,
 } from '@dnd-kit/core';
 import {
-  SortableContext,
-  useSortable,
-  verticalListSortingStrategy,
-  arrayMove,
-  defaultAnimateLayoutChanges,
+  SortableContext, useSortable, verticalListSortingStrategy,
+  arrayMove, defaultAnimateLayoutChanges,
 } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import { useEffect, useRef } from 'react';
 
-/* ---------- Single row ---------- */
-function Row({
-  task,
-  depth,
-  onText,
-  onEnter,
-  onTab,
-  setNodeRef,
-  attributes,
-  listeners,
-  transform,
-  transition,
-}) {
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    paddingLeft: depth * 24,
-  };
-  const inputRef = useRef();
-  useEffect(() => {
-    if (!task.name && inputRef.current) inputRef.current.focus();
-  }, [task.name]);
-
-  return (
-    <div
-      ref={setNodeRef}
-      {...attributes}
-      {...listeners}
-      style={style}
-      className="task-row mb-1"
-    >
-      <span className="task-handle mr-2">☰</span>
-      <input
-        ref={inputRef}
-        className="task-input flex-1 bg-transparent"
-        value={task.name}
-        onChange={(e) => onText(task.id, e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            onEnter(task.id);
-          }
-          if (e.key === 'Tab') {
-            e.preventDefault();
-            onTab(task.id);
-          }
-        }}
-      />
-    </div>
-  );
-}
-
-/* ---------- Sortable wrapper ---------- */
-function SortableRow(props) {
+/* wrapper to inject dnd‑kit props */
+function SortableWrapper(props) {
   const { task } = props;
   const {
     setNodeRef,
@@ -82,8 +22,8 @@ function SortableRow(props) {
   });
 
   return (
-    <Row
-      {...props}
+    <TaskRow
+      {...props}               /* spreads onToggleDone and everything else */
       setNodeRef={setNodeRef}
       attributes={attributes}
       listeners={listeners}
@@ -93,65 +33,57 @@ function SortableRow(props) {
   );
 }
 
-/* ---------- Main tree ---------- */
 export default function TaskTree({
   tasks,
   setTasks,
   onTextChange,
+  onToggleDone,
   onAddBelow,
   onAddChild,
+  onArchive,
 }) {
-  /* sensors */
   const sensors = useSensors(useSensor(PointerSensor));
 
-  /* build nested structure */
-  const buildTree = (parent = null, depth = 0) =>
+  /* build nested list */
+  const tree = (parent = null, depth = 0) =>
     tasks
-      .filter((t) => t.parent_id === parent)
+      .filter((t) => t.parent_id === parent && !t.archived)
       .map((t) => ({
         ...t,
         depth,
-        children: buildTree(t.id, depth + 1),
+        children: tree(t.id, depth + 1),
       }));
 
-  const tree = buildTree();
-  const flatIds = tasks.map((t) => t.id);
+  const flatIds = tasks.filter((t) => !t.archived).map((t) => t.id);
 
   const render = (list) =>
     list.map((t) => (
-      <div key={t.id}>
-        <SortableRow
+      <div key={t.id} className="group">
+        <SortableWrapper
           task={t}
           depth={t.depth}
-          onText={onTextChange}
-          onEnter={onAddBelow}
-          onTab={onAddChild}
+          onTextChange={onTextChange}  
+          onToggleDone={onToggleDone}   
+          onToggleDone={onToggleDone}
+          onAddBelow={onAddBelow}
+          onAddChild={onAddChild}
+          onArchive={onArchive}
         />
-        {t.children?.length > 0 && render(t.children)}
+        {t.children.length > 0 && render(t.children)}
       </div>
     ));
 
-  /* on drag end with simple indent logic */
   const onDragEnd = ({ active, over, delta }) => {
     if (!over || active.id === over.id) return;
-
-    /* reorder flat list */
     const oldIdx = flatIds.indexOf(active.id);
     const newIdx = flatIds.indexOf(over.id);
     let next = arrayMove(tasks, oldIdx, newIdx);
 
-    /* indent / outdent */
     const moving = next.find((t) => t.id === active.id);
     const overTask = next.find((t) => t.id === over.id);
 
-    if (delta.x > 20) {
-      /* indent under overTask */
-      moving.parent_id = overTask.id;
-    } else if (delta.x < -20 && moving.parent_id) {
-      /* un‑indent one level */
-      const parent = next.find((t) => t.id === moving.parent_id);
-      moving.parent_id = parent ? parent.parent_id : null;
-    }
+    if (delta.x > 20) moving.parent_id = overTask.id;
+    if (delta.x < -20) moving.parent_id = overTask.parent_id ?? null;
 
     setTasks(next);
   };
@@ -159,7 +91,7 @@ export default function TaskTree({
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
       <SortableContext items={flatIds} strategy={verticalListSortingStrategy}>
-        <div className="task-tree">{render(tree)}</div>
+        {render(tree())}
       </SortableContext>
     </DndContext>
   );
