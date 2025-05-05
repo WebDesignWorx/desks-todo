@@ -1,12 +1,65 @@
-# React + Vite
+# Desks Todo
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A local‑first, keyboard‑driven to‑do app that combines **infinite outline structure** with a fast “Next‑action” workflow.  
+No server, no sign‑up — everything lives in your browser (IndexedDB) until you decide to sync.
 
-Currently, two official plugins are available:
+## Why another task app?
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Most list apps give you either:
 
-## Expanding the ESLint configuration
+* Flat lists (quick but messy), **or**
+* Fixed‑depth projects (structured but slow).
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+**Desks Todo** lets you start quick and stay organised:
+
+* **Enter** to keep capturing
+* **Tab** to nest ideas when they grow
+* Drag (or Shift+Drag) to reorder *and* indent/out‑dent
+* Separate **Desks** so work ≠ private ≠ side‑hustle
+
+---
+
+## Key Features (Current)
+
+| Category | What you get |
+|----------|--------------|
+| **Multi‑Desk workspace** | Unlimited projects (“Desks”) with instant switching. |
+| **Infinite hierarchy** | Tasks can nest to any depth; visual indents show structure. |
+| **Zero‑latency capture** | *Enter* = sibling, *Tab* = child. Bottom **Add task…** box for continuous entry. |
+| **Inline editing** | Every item is always editable — no mode switching. |
+| **Drag‑and‑Drop** | Reorder siblings; drag a little right/left to nest or un‑nest. |
+| **Offline & private** | Data stored in **IndexedDB**; reload or go offline and nothing is lost. |
+| **One‑click setup** | Vite + React, Tailwind — `npm install` then `npm run dev`. |
+
+---
+
+## Keyboard Shortcuts
+
+| Key | Action |
+|-----|--------|
+| `Enter` | Add sibling below |
+| `Tab` | Add child (nest) |
+| `↑ / ↓` | Native cursor movement (keeps editing inline) |
+| Drag (handle ☰) | Reorder; drag horizontally to change depth |
+
+*(More shortcuts coming soon.)*
+
+---
+
+## Road‑map / Upcoming
+
+* Collapse / expand branches
+* Trash / archive list
+* Task details: priority, due‑date, reminders
+* Markdown formatting inside items
+* PWA install & encrypted cloud sync
+
+---
+
+## Getting Started
+
+```bash
+git clone git@github.com:WebDesignWorx/desks-todo.git
+cd desks-todo/mytodo-react
+npm install
+npm run dev      # open http://localhost:5173
