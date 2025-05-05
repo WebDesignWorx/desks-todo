@@ -24,11 +24,15 @@ export default function TaskPage() {
     })();
     localStorage.setItem('lastDesk', deskId);
   }, [deskId]);
-  const toggleDone = (id) => {
-  const next = tasks.map((t) =>
+// filepath: mytodo-react/src/pages/TaskPage.jsx
+const toggleDone = (id) => {
+  console.log('Toggling done for task:', id);
+  const updatedTasks = tasks.map((t) =>
     t.id === id ? { ...t, done: !t.done } : t
   );
-  persist(next);
+  console.log('Updated tasks:', updatedTasks);
+  setTasks(updatedTasks);
+  persist(updatedTasks);
 };
 
 

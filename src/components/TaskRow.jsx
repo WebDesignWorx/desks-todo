@@ -47,13 +47,13 @@ export default function TaskRow({
       aria-level={depth + 1}
     >
       {/* checkbox */}
+      {/* filepath: mytodo-react/src/components/TaskRow.jsx */}
       <input
         type="checkbox"
         checked={task.done}
         onChange={() => onToggleDone(task.id)}
         className="mr-2"
       />
-
       {/* drag handle */}
       <span className="task-handle mr-2 opacity-0 group-hover:opacity-100">
         ☰
