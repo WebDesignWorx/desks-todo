@@ -1,10 +1,11 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
+
 import {
   getTasksByDeskId,
   saveTask,
-  pruneEmptyTasks,
   archiveTaskById,
+  pruneEmptyTasks,
 } from '../utils/idb.js';
 import ArchiveList from './ArchiveList';
 import TaskTree from '../components/TaskTree';
@@ -23,19 +24,22 @@ export default function TaskPage() {
     })();
     localStorage.setItem('lastDesk', deskId);
   }, [deskId]);
-  const toggleDone = (id) =>
-  persist(
-    tasks.map((t) =>
-      t.id === id ? { ...t, done: !t.done } : t
+  const toggleDone = (id) => {
+  const next = tasks.map((t) =>
+    t.id === id ? { ...t, done: !t.done } : t
+  );
+  persist(next);
+};
+
+
+const archive = async (id) => {
+  await archiveTaskById(id);
+  setTasks((prev) =>
+    prev.map((t) =>
+      t.id === id ? { ...t, archived: true } : t
     )
   );
-
-
-  const archive = async (id) => {
-    await archiveTaskById(id);
-    const fresh = await getTasksByDeskId(deskId);
-    setTasks(fresh);
-  };
+};
 
   const [showArc, setShowArc] = useState(false);
   const persist = (next) => {

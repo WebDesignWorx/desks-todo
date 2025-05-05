@@ -1,13 +1,20 @@
-import TaskRow from './TaskRow';
 import {
-  DndContext, PointerSensor, useSensor, useSensors, closestCenter,
+  DndContext,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
 } from '@dnd-kit/core';
 import {
-  SortableContext, useSortable, verticalListSortingStrategy,
-  arrayMove, defaultAnimateLayoutChanges,
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+  defaultAnimateLayoutChanges,
 } from '@dnd-kit/sortable';
+import TaskRow from './TaskRow';
+import { CSS } from '@dnd-kit/utilities';
 
-/* wrapper to inject dnd‑kit props */
 function SortableWrapper(props) {
   const { task } = props;
   const {
@@ -23,7 +30,7 @@ function SortableWrapper(props) {
 
   return (
     <TaskRow
-      {...props}               /* spreads onToggleDone and everything else */
+      {...props}
       setNodeRef={setNodeRef}
       attributes={attributes}
       listeners={listeners}
@@ -44,10 +51,11 @@ export default function TaskTree({
 }) {
   const sensors = useSensors(useSensor(PointerSensor));
 
-  /* build nested list */
+  /* build nested data */
   const tree = (parent = null, depth = 0) =>
     tasks
       .filter((t) => t.parent_id === parent && !t.archived)
+      .sort((a, b) => a.position - b.position)
       .map((t) => ({
         ...t,
         depth,
@@ -62,8 +70,7 @@ export default function TaskTree({
         <SortableWrapper
           task={t}
           depth={t.depth}
-          onTextChange={onTextChange}  
-          onToggleDone={onToggleDone}   
+          onTextChange={onTextChange}
           onToggleDone={onToggleDone}
           onAddBelow={onAddBelow}
           onAddChild={onAddChild}

@@ -19,12 +19,6 @@ export default function TaskRow({
   const [value, setValue] = useState(task.name);
   const inputRef = useRef();
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    paddingLeft: depth * 24,
-  };
-
   useEffect(() => {
     if (editing) inputRef.current?.focus();
   }, [editing]);
@@ -32,8 +26,14 @@ export default function TaskRow({
   const commit = () => {
     const trimmed = value.trim();
     setEditing(false);
-    onTextChange(task.id, trimmed);
-    if (!trimmed) setValue(''); // keep UI in sync if user cleared name
+    if (trimmed !== task.name) onTextChange(task.id, trimmed);
+    setValue(trimmed);
+  };
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    paddingLeft: depth * 24,
   };
 
   return (
@@ -63,7 +63,7 @@ export default function TaskRow({
       {editing ? (
         <input
           ref={inputRef}
-          className="task-input flex-1 bg-transparent"
+          className="task-input flex-1 bg-transparent focus:outline-none"
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onBlur={commit}
@@ -81,11 +81,9 @@ export default function TaskRow({
       ) : (
         <div
           onDoubleClick={() => setEditing(true)}
-          className={`flex-1 ${
-            task.done ? 'task-checked-done' : ''
-          }`}
+          className={`flex-1 ${task.done ? 'task-checked-done' : ''}`}
         >
-          {task.name || <em className="text-gray-400">[empty]</em>}
+          {task.name || <em className="text-neutral-400">[empty]</em>}
         </div>
       )}
 

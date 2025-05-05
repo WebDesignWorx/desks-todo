@@ -42,3 +42,13 @@ body {
 .task-checked-done {
   @apply line-through text-gray-400;
 }
+
+.task-row:hover .task-handle,
+.task-row:hover button {
+  opacity: 1 !important;
+}
+
+.task-checked-done {
+  text-decoration: line-through;
+  color: #9ca3af; /* Tailwind gray‑400 */
+}
