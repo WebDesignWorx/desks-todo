@@ -123,13 +123,28 @@ export async function deleteTaskById(id) {
 /* soft‑archive */
 export async function archiveTaskById(id) {
   const db = await openDB();
-  const tx = db.transaction('tasks', 'readwrite');
+  const tx   = db.transaction('tasks', 'readwrite');
   const store = tx.objectStore('tasks');
-  const t = await store.get(id);
+
+  // --- wrap get() so we get the real task object, not the IDBRequest ---
+  const t = await new Promise((resolve, reject) => {
+    const req = store.get(id);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror   = () => reject(req.error);
+  });
+
+  if (!t) return null;              // id not found
   t.archived = true;
-  await store.put(t);
+
+  await new Promise((resolve, reject) => {
+    const req = store.put(t);
+    req.onsuccess = resolve;
+    req.onerror   = () => reject(req.error);
+  });
+
   return t;
 }
+
 
 export async function pruneEmptyTasks(deskId) {
   const db = await openDB();

@@ -24,33 +24,51 @@ export default function TaskPage() {
     })();
     localStorage.setItem('lastDesk', deskId);
   }, [deskId]);
-// filepath: mytodo-react/src/pages/TaskPage.jsx
-const toggleDone = (id) => {
-  console.log('Toggling done for task:', id);
-  const updatedTasks = tasks.map((t) =>
-    t.id === id ? { ...t, done: !t.done } : t
-  );
-  console.log('Updated tasks:', updatedTasks);
-  setTasks(updatedTasks);
-  persist(updatedTasks);
-};
 
+    /* ---------- checkbox toggle --------------- */
+    const toggleDone = (id) =>
+    update(prev => {
+      console.log('here we are'); 
+      const next = prev.map(t =>
+        t.id === id ? { ...t, done: !t.done } : t
+      );
+      console.log('Will save', next.find(t => t.id === id)); 
+      return next;
+    });
 
-const archive = async (id) => {
-  await archiveTaskById(id);
-  setTasks((prev) =>
+    
+/* ------- master updater (private) -------- */
+const update = (recipe) =>
+  setTasks((prev) => {
+    const next = recipe(prev);
+    next.forEach(saveTask);
+    return next;
+  });
+  
+    /* ---------- text edit --------------------- */
+    const changeText = (id, txt) =>
+        update((prev) =>
+          prev.map((t) =>
+            t.id === id ? { ...t, name: txt } : t
+          )
+        );
+    
+    /* ---------- archive (×) ------------------- */
+    const archive = (id) =>
+  update((prev) =>
     prev.map((t) =>
       t.id === id ? { ...t, archived: true } : t
     )
   );
-};
+
 
   const [showArc, setShowArc] = useState(false);
-  const persist = (next) => {
-    setTasks(next);
-    next.forEach(saveTask);
-  };
 
+
+
+/* ------- persist wrapper for children ---- */
+const persist = (array) => update(() => array);
+    
   const addRootTask = (text) => {
     const t = {
       id: uuidv4(),
@@ -66,20 +84,21 @@ const archive = async (id) => {
   const onText = (id, txt) =>
     persist(tasks.map((t) => (t.id === id ? { ...t, name: txt } : t)));
 
-  const onBelow = (afterId) => {
-    const i = tasks.findIndex((t) => t.id === afterId);
-    const ref = tasks[i];
-    const t = {
+  /* ---------- add below ---------- */
+const onBelow = (id) =>
+  update((prev) => {
+    const sibling = prev.find((t) => t.id === id);
+    const newTask = {
       id: uuidv4(),
-      desk_id: deskId,
+      desk_id: sibling.desk_id,
+      parent_id: sibling.parent_id,
       name: '',
-      parent_id: ref.parent_id,
-      position: Date.now(),
+      done: false,
+      archived: false,
+      position: sibling.position + 0.5, // temporary; will be renumbered
     };
-    const next = [...tasks];
-    next.splice(i + 1, 0, t);
-    persist(next);
-  };
+    return [...prev, newTask];
+  });
 
   const onChild = (parent) =>
     persist([
@@ -100,14 +119,14 @@ const archive = async (id) => {
       )}
 
       {tasks.length > 0 && (
-        <TaskTree
-          tasks={tasks}
-          setTasks={persist}
-          onTextChange={onText}
-          onToggleDone={toggleDone}
-          onAddBelow={onBelow}
-          onAddChild={onChild}
-          onArchive={archive}
+        <TaskTree 
+            tasks={tasks}
+            setTasks={persist}
+            onTextChange={changeText}
+            onToggleDone={toggleDone}
+            onAddBelow={onBelow}
+            onAddChild={onChild}
+            onArchive={archive}
         />
       )}
 <button

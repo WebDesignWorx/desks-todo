@@ -5,101 +5,74 @@ import {
   useSensors,
   closestCenter,
 } from '@dnd-kit/core';
-import {
-  SortableContext,
-  useSortable,
-  verticalListSortingStrategy,
-  arrayMove,
-  defaultAnimateLayoutChanges,
-} from '@dnd-kit/sortable';
-import TaskRow from './TaskRow';
-import { CSS } from '@dnd-kit/utilities';
-
-function SortableWrapper(props) {
-  const { task } = props;
-  const {
-    setNodeRef,
-    attributes,
-    listeners,
-    transform,
-    transition,
-  } = useSortable({
-    id: task.id,
-    animateLayoutChanges: defaultAnimateLayoutChanges,
-  });
-
-  return (
-    <TaskRow
-      {...props}
-      setNodeRef={setNodeRef}
-      attributes={attributes}
-      listeners={listeners}
-      transform={transform}
-      transition={transition}
-    />
-  );
-}
+import { arrayMove } from '@dnd-kit/sortable';
+import Level from './Level';
 
 export default function TaskTree({
-  tasks,
-  setTasks,
-  onTextChange,
-  onToggleDone,
-  onAddBelow,
-  onAddChild,
-  onArchive,
-}) {
+   tasks,
+   setTasks,
+   onTextChange,
+   onToggleDone,
+   onAddBelow,
+   onAddChild,
+   onArchive,
+ }) {
   const sensors = useSensors(useSensor(PointerSensor));
 
-  /* build nested data */
-  const tree = (parent = null, depth = 0) =>
+  /* build nested tree */
+  const makeTree = (parent = null, depth = 0) =>
     tasks
       .filter((t) => t.parent_id === parent && !t.archived)
       .sort((a, b) => a.position - b.position)
       .map((t) => ({
         ...t,
         depth,
-        children: tree(t.id, depth + 1),
+        children: makeTree(t.id, depth + 1),
       }));
 
-  const flatIds = tasks.filter((t) => !t.archived).map((t) => t.id);
-
-  const render = (list) =>
-    list.map((t) => (
-      <div key={t.id} className="group">
-        <SortableWrapper
-          task={t}
-          depth={t.depth}
-          onTextChange={onTextChange}
-          onToggleDone={onToggleDone}
-          onAddBelow={onAddBelow}
-          onAddChild={onAddChild}
-          onArchive={onArchive}
-        />
-        {t.children.length > 0 && render(t.children)}
-      </div>
-    ));
+  const tree = makeTree();
 
   const onDragEnd = ({ active, over, delta }) => {
-    if (!over || active.id === over.id) return;
-    const oldIdx = flatIds.indexOf(active.id);
-    const newIdx = flatIds.indexOf(over.id);
-    let next = arrayMove(tasks, oldIdx, newIdx);
+    if (!over) return;
 
-    const moving = next.find((t) => t.id === active.id);
-    const overTask = next.find((t) => t.id === over.id);
+    const updated = [...tasks];           // start from current tasks
 
-    if (delta.x > 20) moving.parent_id = overTask.id;
-    if (delta.x < -20) moving.parent_id = overTask.parent_id ?? null;
+    const moving = updated.find((t) => t.id === active.id);
+    const target = updated.find((t) => t.id === over.id);
+    if (!moving || !target) return;
 
-    setTasks(next);
+    /* horizontal indent / out‑dent ------------- */
+    if (delta.x > 20) moving.parent_id = target.id;
+    if (delta.x < -20) moving.parent_id = target.parent_id ?? null;
+
+    /* sibling re‑order ------------------------- */
+    const siblings = updated
+      .filter((t) => t.parent_id === moving.parent_id && !t.archived)
+      .sort((a, b) => a.position - b.position);
+    const oldIdx = siblings.findIndex((s) => s.id === moving.id);
+    const newIdx = siblings.findIndex((s) => s.id === target.id);
+    const reordered = arrayMove(siblings, oldIdx, newIdx);
+    reordered.forEach((t, i) => (t.position = i + 1));
+
+    setTasks(updated);      // ✅ pass the *array* to persist
+
+
   };
 
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-      <SortableContext items={flatIds} strategy={verticalListSortingStrategy}>
-        {render(tree())}
-      </SortableContext>
+        <Level
+          list={tree}
+          depth={0}
+          callbacks={{
+            onTextChange,
+            onToggleDone,
+            onAddBelow,
+            onAddChild,
+            onArchive,
+          }}
+        />
+
     </DndContext>
   );
 }

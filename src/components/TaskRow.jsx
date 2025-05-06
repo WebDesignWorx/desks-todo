@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { CSS } from '@dnd-kit/utilities';
 
 export default function TaskRow({
   task,
@@ -9,61 +8,53 @@ export default function TaskRow({
   onAddBelow,
   onAddChild,
   onArchive,
-  setNodeRef,
-  attributes,
-  listeners,
-  transform,
-  transition,
+  dragAttributes,
+  dragListeners,
+  setDragRef,
 }) {
   const [editing, setEditing] = useState(!task.name);
   const [value, setValue] = useState(task.name);
   const inputRef = useRef();
 
+  /* auto‑focus when editing starts */
   useEffect(() => {
     if (editing) inputRef.current?.focus();
   }, [editing]);
 
+  /* commit text change */
   const commit = () => {
     const trimmed = value.trim();
     setEditing(false);
     if (trimmed !== task.name) onTextChange(task.id, trimmed);
-    setValue(trimmed);
-  };
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    paddingLeft: depth * 24,
   };
 
   return (
-    <div
-      ref={setNodeRef}
-      {...attributes}
-      {...listeners}
-      style={style}
-      className="task-row mb-1 group"
-      role="treeitem"
-      aria-level={depth + 1}
+    <li
+      ref={setDragRef}
+      {...dragAttributes}
+      {...dragListeners}
+      style={{ paddingLeft: depth * 24 }}
+      className="task-row flex items-center gap-2 mb-1 group"
     >
       {/* checkbox */}
-      {/* filepath: mytodo-react/src/components/TaskRow.jsx */}
       <input
         type="checkbox"
         checked={task.done}
-        onChange={() => onToggleDone(task.id)}
-        className="mr-2"
+        onChange={() => {
+            console.log('✅ TaskRow onToggleDone(', task.id, ')');
+            onToggleDone(task.id);
+        }}
       />
+
       {/* drag handle */}
-      <span className="task-handle mr-2 opacity-0 group-hover:opacity-100">
+      <span className="task-handle cursor-move opacity-0 group-hover:opacity-100">
         ☰
       </span>
 
-      {/* title */}
+      {/* title or input */}
       {editing ? (
         <input
           ref={inputRef}
-          className="task-input flex-1 bg-transparent focus:outline-none"
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onBlur={commit}
@@ -77,24 +68,27 @@ export default function TaskRow({
               onAddChild(task.id);
             }
           }}
+          className="flex-1 bg-transparent outline-none border-b border-indigo-300"
         />
       ) : (
-        <div
-          onDoubleClick={() => setEditing(true)}
-          className={`flex-1 ${task.done ? 'task-checked-done' : ''}`}
-        >
+            <div
+              onDoubleClick={() => setEditing(true)}
+              className={`flex-1 select-none ${
+                task.done ? 'task-checked-done' : ''
+              }`}
+            >
           {task.name || <em className="text-neutral-400">[empty]</em>}
         </div>
       )}
 
-      {/* archive × */}
+      {/* archive (×) */}
       <button
         onClick={() => onArchive(task.id)}
-        className="ml-2 text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100"
+        className="text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100"
         title="Archive"
       >
         ×
       </button>
-    </div>
+    </li>
   );
 }

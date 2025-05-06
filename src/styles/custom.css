@@ -1,13 +1,44 @@
 /* Subtle shadows for tasks */
 body {
+    font-size: 15px;
       font-family: 'Inter', sans-serif;
-      background-color: #f9fafb;
-          
+      background-color: #f9fafb;     
+      margin: 0;
+}
+main {
+    margin: 15px 30px;
+}
+header {}
+header {
+    background-color: #D9E4E8;
+    padding: 2px 20px;    
+    margin-bottom: 1px;
+    box-shadow: 0px 2px 1px -1px rgba(0, 0, 0, 0.2), 0px 1px 1px 0px rgba(0, 0, 0, 0.14), 0px 1px 3px 0px rgba(0, 0, 0, 0.12);
+}
+aside {
+    padding: 15px 30px 15px 20px;
+    background-color: #FFF;
+}
+
+aside a{
+    padding: 4px;
+    font-size: 14px;
+    text-decoration: none;
+    color: #7094a1; 
 }
 .task-item {
   transition: box-shadow 0.2s ease-in-out, background-color 0.2s;
 }
-
+a.bg-blue-500{
+    background-color: #90c0d1;
+    color: white;
+}
+aside a:hover{
+    color: #7094a1; 
+  background-color: #e3ebee;
+}
+    
+    
 .task-item:hover {
   background-color: #f9fafb;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
@@ -39,10 +70,6 @@ body {
 }
 
 
-.task-checked-done {
-  @apply line-through text-gray-400;
-}
-
 .task-row:hover .task-handle,
 .task-row:hover button {
   opacity: 1 !important;
@@ -50,5 +77,7 @@ body {
 
 .task-checked-done {
   text-decoration: line-through;
-  color: #9ca3af; /* Tailwind gray‑400 */
+  color: #9ca3af; /* Tailwind neutral-400 */
 }
+
+
