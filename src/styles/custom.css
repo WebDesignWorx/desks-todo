@@ -27,7 +27,8 @@ aside a{
     color: #7094a1; 
 }
 .task-item {
-  transition: box-shadow 0.2s ease-in-out, background-color 0.2s;
+    transition: box-shadow 0.2s ease-in-out, background-color 0.2s;
+    border: none;
 }
 a.bg-blue-500{
     background-color: #90c0d1;
@@ -39,12 +40,12 @@ aside a:hover{
 }
     
     
-.task-item:hover {
-  background-color: #f9fafb;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+.task-row:hover {
+    background-color: #fff;
 }
 
 /* Depth indication with colored borders or indent lines */
+
 .task-depth-0 {
   border-left: 4px solid #3b82f6; /* blue-500 */
 }
@@ -62,7 +63,6 @@ aside a:hover{
 }
 
 
-.task-item {border: none;}
 
 .task-row:hover .task-handle,
 .task-row:hover button {
@@ -80,4 +80,111 @@ aside a:hover{
   color: #9ca3af; /* Tailwind neutral-400 */
 }
 
+
+li.task-row:hover{
+    background-color: white;
+}
+li.task-row{
+    border-bottom: 1px solid silver;
+}
+
+main div:first-child {
+    max-width: 750px;
+}
+
+
+/* make siblings animate into place */
+.sortable-item {
+  transition: transform 200ms ease, opacity 200ms ease;
+}
+
+/* fade out the “real” row while dragging */
+.sortable-item.dragging {
+  opacity: 0.2;
+}
+
+/* floating preview style */
+.drag-overlay {
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+  background: white;
+  padding: 6px 12px;
+  width: 100%;
+  max-width: 600px;
+}
+
+/* checked tasks */
+.task-checked-done {
+  opacity: 0.6;
+  text-decoration: line-through;
+}
+
+/* handle cursors */
+.task-handle {
+  font-size: 1rem;
+}
+/* custom.css */
+
+
+/* indent each row by the computed --spacing */
+.task-row {
+  padding-left: var(--spacing);
+}
+
+/* rest of your draggable styles… */
+.drag-preview {
+  opacity: 0.8;
+  pointer-events: none;
+}
+.task-row.dragging {
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+}
+
+svg.dhandle { 
+    padding-right: 5px;
+    fill: #859fa8;
+}
+
+
+/* remove native list‐markers and gaps */
+ul { list-style: none; margin: 0; padding: 0; }
+
+/*.task-row { transition: background-color 150ms ease; }*/
+/*
+.drag-preview {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  border-radius: 4px;
+}*/
+
+/* make the ghost item semi-opaque */
+[data‐dnd‐kit‐draggable‐overlay] { opacity: 0.9; }
+
+
+/* src/styles/tree.css (import it once) */
+.task-row        { padding-left: calc(var(--spacing, 0) * 1px); }
+.drag-preview    { opacity:.8; cursor:grabbing; }
+.dhandle svg     { pointer-events:none; }    /* nicer cursor */
+
+/* imported in index.css */
+
+.spr-tree { list-style: none; padding: 0; }
+.spr-row  { display:flex; align-items:center; margin-bottom:2px;
+            background:white; border-radius:6px; padding:2px 4px; }
+.spr-row:hover { background:#f8f8fa; }
+
+.spr-handle { cursor:grab; user-select:none; width:18px; text-align:center; }
+
+.spr-caret , .spr-caret-placeholder { width:18px; text-align:center; margin-right:2px; }
+
+.spr-caret { cursor:pointer; font-size:14px; line-height:1; }
+
+.spr-input { flex:1; background:transparent; outline:none; border-bottom:1px solid #6366f1; }
+
+.spr-archive { color:#ef4444; font-weight:bold; line-height:1; }
+
+.spr-done { text-decoration:line-through; color:#9ca3af; }
+
+.spr-overlay { padding:4px 6px; background:white; border:1px solid #e5e7eb;
+               border-radius:6px; box-shadow:0 4px 12px rgba(0,0,0,.12); }
 

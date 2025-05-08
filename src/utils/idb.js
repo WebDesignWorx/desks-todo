@@ -78,22 +78,28 @@ export async function saveTask(task) {
   });
 }
 
-export async function getTasksByDeskId(deskId) {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction('tasks', 'readonly');
+/**
+ * Load tasks for a desk.
+ * @param {string|number} deskId
+ * @param {boolean} includeArchived if true, returns all tasks; otherwise only non-archived
+ */
+export async function getTasksByDeskId(deskId, includeArchived = true) {
+  const d = await openDB();
+  return new Promise((res, rej) => {
+    const tx = d.transaction('tasks','readonly');
     const store = tx.objectStore('tasks');
-    const request = store.getAll();
-
-    request.onsuccess = () => {
-      const all = request.result;
+    const req = store.getAll();
+    req.onsuccess = () => {
+      const all = req.result || [];
       const filtered = all
-        .filter((t) => t.desk_id === deskId && !t.archived)
-        .sort((a, b) => a.position - b.position);
-      resolve(filtered);
+        .filter(t =>
+          t.desk_id === deskId &&
+          (includeArchived ? true : !t.archived)
+        )
+        .sort((a,b) => a.position - b.position);
+      res(filtered);
     };
-
-    request.onerror = () => reject(request.error);
+    req.onerror = () => rej(req.error);
   });
 }
 
@@ -109,49 +115,60 @@ export async function deleteTask(id) {
   });
 }
 
-
-// …existing openDB etc.
-
-/* delete permanently */
+// Permanently delete a task (alias for deleteTask)
 export async function deleteTaskById(id) {
-  const db = await openDB();
-  const tx = db.transaction('tasks', 'readwrite');
-  tx.objectStore('tasks').delete(id);
-  return tx.done;
+  return deleteTask(id);
 }
 
-/* soft‑archive */
+// Soft-archive a task
 export async function archiveTaskById(id) {
   const db = await openDB();
-  const tx   = db.transaction('tasks', 'readwrite');
+  const tx = db.transaction('tasks', 'readwrite');
   const store = tx.objectStore('tasks');
 
-  // --- wrap get() so we get the real task object, not the IDBRequest ---
-  const t = await new Promise((resolve, reject) => {
+  // read the full task
+  const t = await new Promise((res, rej) => {
     const req = store.get(id);
-    req.onsuccess = () => resolve(req.result);
-    req.onerror   = () => reject(req.error);
+    req.onsuccess = () => res(req.result);
+    req.onerror = () => rej(req.error);
   });
+  if (!t) return null;
 
-  if (!t) return null;              // id not found
   t.archived = true;
-
-  await new Promise((resolve, reject) => {
+  return new Promise((resolve, reject) => {
     const req = store.put(t);
-    req.onsuccess = resolve;
-    req.onerror   = () => reject(req.error);
+    req.onsuccess = () => resolve(t);
+    req.onerror = () => reject(req.error);
   });
-
-  return t;
 }
 
+// Restore (un-archive) a task
+export async function restoreTaskById(id) {
+  const db = await openDB();
+  const tx = db.transaction('tasks', 'readwrite');
+  const store = tx.objectStore('tasks');
 
+  const t = await new Promise((res, rej) => {
+    const req = store.get(id);
+    req.onsuccess = () => res(req.result);
+    req.onerror = () => rej(req.error);
+  });
+  if (!t) return null;
+
+  t.archived = false;
+  return new Promise((resolve, reject) => {
+    const req = store.put(t);
+    req.onsuccess = () => resolve(t);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+// Remove any tasks without a name (e.g. leftover blanks)
 export async function pruneEmptyTasks(deskId) {
   const db = await openDB();
   const tx = db.transaction('tasks', 'readwrite');
   const store = tx.objectStore('tasks');
 
-  // getAll wrapped in a Promise so we always receive an array
   const all = await new Promise((res, rej) => {
     const req = store.getAll();
     req.onsuccess = () => res(req.result || []);
@@ -161,7 +178,6 @@ export async function pruneEmptyTasks(deskId) {
   const empties = all.filter(
     (t) => t.desk_id === deskId && (!t.name || !t.name.trim())
   );
-
   await Promise.all(empties.map((t) => store.delete(t.id)));
   return empties.length;
 }
