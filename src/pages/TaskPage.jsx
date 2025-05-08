@@ -1,97 +1,165 @@
-import { useEffect, useState, useCallback } from "react";
-import { useParams } from "react-router-dom";
-import { SortableTree } from "../components/SortableTree";      // the new tree
+import { useEffect, useState, useRef } from 'react';
+import { useParams } from 'react-router-dom';
 import {
   getTasksByDeskId,
+  pruneEmptyTasks,
   saveTask,
-  pruneEmptyTasks
-} from "../utils/idb";
-import { v4 as uuid } from "uuid";
-
-/* helpers to convert between DB flat list and tree component ---- */
-const makeTree = (flat) => {
-  const byId = Object.fromEntries(flat.map((t) => [t.id, { ...t, children: [] }]));
-  const root = [];
-  flat.forEach((t) => {
-    if (t.parent_id) byId[t.parent_id]?.children.push(byId[t.id]);
-    else root.push(byId[t.id]);
-  });
-  return root;
-};
-const flattenTree = (nodes, parentId = null, depth = 0, list = []) => {
-  nodes.forEach((n, i) => {
-    list.push({
-      ...n,
-      parent_id: parentId,
-      position: i,
-      depth,                             // not saved – just helper
-      children: undefined                // strip children for DB
-    });
-    flattenTree(n.children ?? [], n.id, depth + 1, list);
-  });
-  return list;
-};
-// ---------------------------------------------------------------
+  deleteTaskById,
+} from '../utils/idb';
+import ArchiveList from './ArchiveList';
+import TaskTree from '../components/TaskTree';
+import { v4 as uuidv4 } from 'uuid';
 
 export default function TaskPage() {
-  const { id: deskId } = useParams();
-  const [tree, setTree] = useState([]);
+  const { deskId } = useParams();
+  const [tasks, setTasks] = useState([]);
+  const [showArchive, setShowArchive] = useState(false);
+  const addInputRef = useRef();
 
-  /* load + prune ---------------------------------------------- */
+  // load/refresh whenever deskId changes
   useEffect(() => {
     (async () => {
       await pruneEmptyTasks(deskId);
-      const tasks = await getTasksByDeskId(deskId, true /* include archive toggle in tree if you want */);
-      setTree(makeTree(tasks));
+      const t = await getTasksByDeskId(deskId);
+      setTasks(t);
     })();
+    localStorage.setItem('lastDesk', deskId);
   }, [deskId]);
 
-  /* persist any tree mutation --------------------------------- */
-  const persist = useCallback(
-    (newTree) => {
-      setTree(newTree);
-      // flatten + write every task (very small, happens on drop / text change)
-      flattenTree(newTree).forEach(saveTask);
-    },
-    [deskId]
-  );
+  // a wrapper that both updates state and persists every item
+  const persist = (updater) => {
+    setTasks((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      next.forEach(saveTask);
+      return next;
+    });
+  };
 
-  /* add at root level (Enter in footer) ------------------------ */
-  const addRootTask = (name) => {
-    const t = {
-      id: uuid(),
-      desk_id: deskId,
-      name,
-      done: false,
-      archived: false,
-      parent_id: null,
-      position: tree.length
-    };
-    persist([...tree, { ...t, children: [] }]);
+  const toggleDone = (id) =>
+    persist((prev) =>
+      prev.map((t) =>
+        t.id === id ? { ...t, done: !t.done } : t
+      )
+    );
+
+  const changeText = (id, name) =>
+    persist((prev) =>
+      prev.map((t) =>
+        t.id === id ? { ...t, name } : t
+      )
+    );
+
+  const addBelow = (id) =>
+    persist((prev) => {
+      const idx = prev.findIndex((t) => t.id === id);
+      const sibling = prev[idx];
+      const newTask = {
+        id: uuidv4(),
+        desk_id: deskId,
+        name: '',
+        done: false,
+        archived: false,
+        parent_id: sibling.parent_id,
+        position: sibling.position + 0.1,
+      };
+      return [...prev, newTask];
+    });
+
+  const addChild = (parentId) =>
+    persist((prev) => [
+      ...prev,
+      {
+        id: uuidv4(),
+        desk_id: deskId,
+        name: '',
+        done: false,
+        archived: false,
+        parent_id: parentId,
+        position: Date.now(),
+      },
+    ]);
+
+  const archive = (id) =>
+    persist((prev) =>
+      prev.map((t) =>
+        t.id === id ? { ...t, archived: true } : t
+      )
+    );
+
+  const deletePermanent = (id) => {
+    deleteTaskById(id).then(() => {
+      setTasks((prev) => prev.filter((t) => t.id !== id));
+    });
+  };
+
+  const onRootKey = (e) => {
+    if (e.key === 'Enter' && e.target.value.trim()) {
+      const name = e.target.value.trim();
+      e.target.value = '';
+      persist((prev) => [
+        ...prev,
+        {
+          id: uuidv4(),
+          desk_id: deskId,
+          name,
+          done: false,
+          archived: false,
+          parent_id: null,
+          position: Date.now(),
+        },
+      ]);
+    }
   };
 
   return (
-    <>
-      <SortableTree
-        items={tree}
-        setItems={persist}
-        indentationWidth={20}
-        collapsible
-        indicator
-        removable
-      />
+    <div className="flex flex-col h-full">
+      {tasks.length === 0 && !showArchive && (
+        <p className="text-gray-500">No tasks yet.</p>
+      )}
 
-      {/* quick-add input */}
-      <input
-        placeholder="Add task…"
-        className="mt-4 w-full border rounded px-3 py-2"
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && e.currentTarget.value.trim()) {
-            addRootTask(e.currentTarget.value.trim());
-            e.currentTarget.value = "";
+      {tasks.length > 0 && (
+        <TaskTree
+          tasks={tasks}
+          setTasks={persist}
+          onToggleDone={toggleDone}
+          onTextChange={changeText}
+          onAddBelow={addBelow}
+          onAddChild={addChild}
+          onArchive={archive}
+        />
+      )}
+
+      <button
+        className="mt-4 text-blue-600"
+        onClick={() => setShowArchive((v) => !v)}
+      >
+        {showArchive
+          ? '[ hide archive ]'
+          : `[ show archive (${tasks.filter(t => t.archived).length}) ]`}
+      </button>
+
+      {showArchive && (
+        <ArchiveList
+          tasks={tasks.filter((t) => t.archived)}
+          onRestore={(id) =>
+            persist((prev) =>
+              prev.map((t) =>
+                t.id === id ? { ...t, archived: false } : t
+              )
+            )
           }
-        }}
-      />
-    </>
+          onDeletePermanent={deletePermanent}
+        />
+      )}
+
+      <div className="mt-auto pt-4">
+        <input
+          ref={addInputRef}
+          placeholder="Add task…"
+          className="border rounded px-3 py-2 w-full"
+          onKeyDown={onRootKey}
+        />
+      </div>
+    </div>
   );
 }

@@ -21,7 +21,6 @@ import {
   buildTree,
   flattenTree,
   getProjection,
-  getChildCount,
   removeChildrenOf,
   setProperty,
 } from "../utils/tree-utils";
@@ -40,11 +39,11 @@ export default function TaskTree({
   const [overId, setOverId] = useState(null);
   const [offsetLeft, setOffsetLeft] = useState(0);
 
-  // 1) Flatten and remove collapsed branches
+  // 1) flatten + hide collapsed sub-trees
   const flattened = useMemo(() => {
     const flat = flattenTree(tasks);
-    const collapsedIds = flat.reduce((acc, { id, children, collapsed }) => {
-      return collapsed && children.length ? acc.concat(id) : acc;
+    const collapsedIds = flat.reduce((ids, { id, children, collapsed }) => {
+      return collapsed && children.length ? [...ids, id] : ids;
     }, []);
     return removeChildrenOf(
       flat,
@@ -52,19 +51,12 @@ export default function TaskTree({
     );
   }, [tasks, activeId]);
 
-  // 2) Compute projected drop position (depth + parentId)
+  // 2) compute where a drop would land
   const projected =
     activeId && overId
-      ? getProjection(
-          flattened,
-          activeId,
-          overId,
-          offsetLeft,
-          /* indentationWidth */ 20
-        )
+      ? getProjection(flattened, activeId, overId, offsetLeft, 20)
       : null;
 
-  // Sensors: start drag after 5px movement
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
@@ -83,24 +75,27 @@ export default function TaskTree({
         setOffsetLeft(0);
 
         if (projected && over) {
+          // clone our flattened items
           const cloned = JSON.parse(JSON.stringify(flattened));
           const oldIndex = cloned.findIndex((i) => i.id === active.id);
-          // reassign depth & parent
+
+          // update its depth & parent
           cloned[oldIndex] = {
             ...cloned[oldIndex],
             depth: projected.depth,
             parentId: projected.parentId,
           };
+
+          // move its array position
           const newIndex = cloned.findIndex((i) => i.id === over.id);
-          // move in list
           const moved = [
             ...cloned.slice(0, oldIndex),
             ...cloned.slice(oldIndex + 1),
           ];
           moved.splice(newIndex, 0, cloned[oldIndex]);
-          // rebuild tree
-          const tree = buildTree(moved);
-          setTasks(tree);
+
+          // rebuild nested tree and persist
+          setTasks(buildTree(moved));
         }
       }}
       onDragCancel={() => {
@@ -108,23 +103,25 @@ export default function TaskTree({
         setOverId(null);
         setOffsetLeft(0);
       }}
-      dropAnimation={{ ...defaultDropAnimation, dragSourceOpacity: 0.5 }}
+      dropAnimation={{
+        ...defaultDropAnimation,
+        dragSourceOpacity: 0.5,
+      }}
     >
       <SortableContext
         items={flattened.map((i) => i.id)}
         strategy={verticalListSortingStrategy}
       >
         <ul className="space-y-1">
-          {flattened.map(({ id, depth, children, collapsed }) => (
+          {flattened.map((item) => (
             <SortableItem
-              key={id}
-              id={id}
-              tasks={tasks}
-              depth={id === activeId && projected ? projected.depth : depth}
-              collapsed={Boolean(collapsed && children.length)}
+              key={item.id}
+              item={item}
+              projected={projected}
+              activeId={activeId}
               onToggleCollapse={() =>
                 setTasks((items) =>
-                  setProperty(items, id, "collapsed", (v) => !v)
+                  setProperty(items, item.id, "collapsed", (v) => !v)
                 )
               }
               onTextChange={onTextChange}
@@ -139,7 +136,7 @@ export default function TaskTree({
 
       <DragOverlay>
         {activeId ? (
-          <div className="bg-white shadow-lg rounded p-2">
+          <div className="p-2 bg-white shadow-lg rounded">
             {tasks.find((t) => t.id === activeId)?.name || "…"}
           </div>
         ) : null}
@@ -149,10 +146,9 @@ export default function TaskTree({
 }
 
 function SortableItem({
-  id,
-  tasks,
-  depth,
-  collapsed,
+  item,
+  projected,
+  activeId,
   onToggleCollapse,
   onTextChange,
   onToggleDone,
@@ -160,30 +156,24 @@ function SortableItem({
   onAddChild,
   onArchive,
 }) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-  } = useSortable({ id });
+  const { id, depth, children, collapsed } = item;
+  const isProjected = id === activeId && projected;
+
+  const { attributes, listeners, setNodeRef, transform, transition } =
+    useSortable({ id });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    // you can expose the CSS variable for the demo’s blue bar indicator:
-    "--spacing": `${depth * 20}px`,
+    // drives the little blue insertion bar
+    "--spacing": `${(isProjected ? projected.depth : depth) * 20}px`,
   };
 
-  const task = tasks.find((t) => t.id === id);
-
   return (
-    <li ref={setNodeRef} style={style}>
+    <li ref={setNodeRef} style={style} className="relative">
       <TaskRow
-        task={task}
-        depth={depth}
-        collapsed={collapsed}
-        onToggleCollapse={onToggleCollapse}
+        task={item}
+        depth={isProjected ? projected.depth : depth}
         onTextChange={onTextChange}
         onToggleDone={onToggleDone}
         onAddBelow={onAddBelow}
@@ -192,6 +182,16 @@ function SortableItem({
         dragAttributes={attributes}
         dragListeners={listeners}
       />
+
+      {children.length > 0 && (
+        <button
+          onClick={onToggleCollapse}
+          className="absolute left-0 top-1"
+          aria-label={collapsed ? "Expand branch" : "Collapse branch"}
+        >
+          {collapsed ? "▸" : "▾"}
+        </button>
+      )}
     </li>
   );
 }

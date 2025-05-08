@@ -1,10 +1,7 @@
-// src/pages/ArchiveList.jsx
-import React from 'react';
-
 export default function ArchiveList({ tasks, onRestore, onDeletePermanent }) {
   if (!tasks.length) {
     return (
-      <div className="mt-4 bg-slate-50 p-4 rounded">
+      <div className="mt-4 bg-gray-50 p-4 rounded">
         <h3 className="font-semibold mb-2">Archived</h3>
         <p className="text-sm text-gray-500">No archived tasks.</p>
       </div>
@@ -12,14 +9,16 @@ export default function ArchiveList({ tasks, onRestore, onDeletePermanent }) {
   }
 
   return (
-    <div className="mt-4 bg-slate-50 p-4 rounded">
+    <div className="mt-4 bg-gray-50 p-4 rounded">
       <h3 className="font-semibold mb-2">Archived</h3>
       <ul className="space-y-1">
         {tasks.map((t) => (
           <li
             key={t.id}
             className={`flex items-center justify-between px-2 py-1 rounded ${
-              t.done ? 'task-checked-done bg-white' : 'bg-gray-100'
+              t.done
+                ? 'line-through text-gray-400 bg-white'
+                : 'bg-gray-100'
             }`}
           >
             <div className="flex items-center space-x-2">
@@ -29,7 +28,7 @@ export default function ArchiveList({ tasks, onRestore, onDeletePermanent }) {
                 disabled
                 className="h-4 w-4"
               />
-              <span className="flex-1">{t.name}</span>
+              <span>{t.name}</span>
             </div>
             <div className="space-x-2 text-sm">
               <button

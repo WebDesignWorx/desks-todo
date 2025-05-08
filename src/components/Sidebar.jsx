@@ -1,44 +1,34 @@
-import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { NavLink } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { getAllDesks } from '../utils/idb';
 
-export default function Sidebar({ desks, addDesk }) {
-  const { pathname } = useLocation();
-  const [name, setName] = useState("");
+export default function Sidebar() {
+  const [desks, setDesks] = useState([]);
 
-  const onSubmit = async (e) => {
-    e.preventDefault();
-    if (!name.trim()) return;
-    const id = await addDesk(name);
-    setName("");
-  };
+  useEffect(() => {
+    getAllDesks().then(setDesks);
+  }, []);
 
   return (
-    <aside className="w-56 shrink-0 border-r bg-white flex flex-col">
-      <form onSubmit={onSubmit} className="p-3 border-b">
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="New desk…"
-          className="w-full border rounded px-2 py-1 text-sm"
-        />
-      </form>
-
-      <nav className="flex-1 overflow-auto p-2 space-y-1">
-        {desks.map((d) => {
-          const active = pathname.includes(d.id);
-          return (
-            <Link
-              key={d.id}
-              to={`/desk/${d.id}`}
-              className={`block px-3 py-1 rounded text-sm ${
-                active ? "bg-indigo-600 text-white" : "hover:bg-gray-100"
-              }`}
-            >
-              {d.name}
-            </Link>
-          );
-        })}
-      </nav>
+    <aside className="w-64 bg-gray-800 text-white p-4 flex-shrink-0">
+      <h1 className="text-2xl font-bold mb-4">Desks Todo</h1>
+      <div className="space-y-2">
+        {desks.map((desk) => (
+          <NavLink
+            key={desk.id}
+            to={`/desk/${desk.id}`}
+            className={({ isActive }) =>
+              `block px-3 py-2 rounded ${
+                isActive
+                  ? 'bg-blue-600'
+                  : 'bg-gray-700 hover:bg-gray-600'
+              }`
+            }
+          >
+            {desk.name}
+          </NavLink>
+        ))}
+      </div>
     </aside>
   );
 }

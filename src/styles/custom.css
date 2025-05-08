@@ -187,4 +187,18 @@ ul { list-style: none; margin: 0; padding: 0; }
 
 .spr-overlay { padding:4px 6px; background:white; border:1px solid #e5e7eb;
                border-radius:6px; box-shadow:0 4px 12px rgba(0,0,0,.12); }
+li[style*="--spacing"]::before {
+  content: "";
+  position: absolute;
+  left: var(--spacing);
+  right: 0;
+  height: 2px;
+  background: #3b82f6; /* Tailwind blue-500 */
+  transform-origin: 0;
+  transform: scaleX(0);
+  transition: transform 0.1s ease;
+}
+li.sortable-activated::before {
+  transform: scaleX(1);
+}
 
