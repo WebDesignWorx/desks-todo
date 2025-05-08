@@ -1,0 +1,98 @@
+diff --git a/src/components/TaskTree.jsx b/src/components/TaskTree.jsx
+index e1dbe35..aad7c2f 100644
+--- a/src/components/TaskTree.jsx
++++ b/src/components/TaskTree.jsx
+@@
+         <SortableWrapper
+           task={t}
+           depth={t.depth}
+           onTextChange={onTextChange}
++          onToggleDone={onToggleDone}
+           onAddBelow={onAddBelow}
+           onAddChild={onAddChild}
+           onArchive={onArchive}
+         />
+@@
+ function SortableWrapper(props) {
+   const { task } = props;
+   const {
+@@
+   return (
+     <TaskRow
+       {...props}
+       setNodeRef={setNodeRef}
+@@
+diff --git a/src/components/TaskRow.jsx b/src/components/TaskRow.jsx
+index 02d0bb7..c590f4d 100644
+--- a/src/components/TaskRow.jsx
++++ b/src/components/TaskRow.jsx
+@@
+-  const commit = () => {
+-    const trimmed = value.trim();
+-    setEditing(false);
+-    onTextChange(task.id, trimmed);
+-    if (!trimmed) setValue(''); // keep UI in sync if user cleared name
+-  };
++  const commit = () => {
++    const trimmed = value.trim();
++    setEditing(false);
++    if (trimmed !== task.name) onTextChange(task.id, trimmed);
++    setValue(trimmed);
++  };
+@@
+-      <div
+-        onDoubleClick={() => setEditing(true)}
+-        className={`flex-1 ${task.done ? 'line-through text-gray-400' : ''}`}
+-      >
++      <div
++        onDoubleClick={() => setEditing(true)}
++        className={`flex-1 ${task.done ? 'task-checked-done' : ''}`}
++      >
+         {task.name || <em className="text-gray-400">[empty]</em>}
+       </div>
+@@
+diff --git a/src/pages/TaskPage.jsx b/src/pages/TaskPage.jsx
+index 0e8ea48..fcb5a75 100644
+--- a/src/pages/TaskPage.jsx
++++ b/src/pages/TaskPage.jsx
+@@
+-  const toggleDone = (id) =>
+-    persist(
+-      tasks.map((t) =>
+-        t.id === id ? { ...t, done: !t.done } : t
+-      )
+-    );
++  const toggleDone = (id) => {
++    const next = tasks.map((t) =>
++      t.id === id ? { ...t, done: !t.done } : t
++    );
++    persist(next);
++  };
+@@
+-  const archive = async (id) => {
+-    await archiveTaskById(id);          // updates IndexedDB
+-    const fresh = await getTasksByDeskId(deskId);
+-    setTasks(fresh);                    // refresh state
+-  };
++  const archive = async (id) => {
++    await archiveTaskById(id);
++    setTasks((prev) =>
++      prev.map((t) =>
++        t.id === id ? { ...t, archived: true } : t
++      )
++    );
++  };
+diff --git a/src/styles/custom.css b/src/styles/custom.css
+index 3d0a4f8..0de6c7c 100644
+--- a/src/styles/custom.css
++++ b/src/styles/custom.css
+@@
+ .task-row:hover .task-handle,
+ .task-row:hover button {
+   opacity: 1 !important;
+ }
++
++.task-checked-done {
++  text-decoration: line-through;
++  color: #9ca3af; /* tailwind gray‑400 */
++}

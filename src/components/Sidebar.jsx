@@ -1,32 +1,44 @@
-/* …imports stay same */
-import { Link } from 'react-router-dom';
-export default function Sidebar({ desks, currentDeskId, startAddDesk }) {
-  /* …state stays same, remove inline add‑form logic */
+import { useState } from "react";
+import { Link, useLocation } from "react-router-dom";
+
+export default function Sidebar({ desks, addDesk }) {
+  const { pathname } = useLocation();
+  const [name, setName] = useState("");
+
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    const id = await addDesk(name);
+    setName("");
+  };
 
   return (
-    <aside className="w-60 shrink-0 bg-slate-100 border-r p-4 h-[calc(100vh-4rem)] overflow-y-auto">
-      <button
-        onClick={startAddDesk}              
-        className="w-full mb-4 py-1.5 bg-blue-600 text-white rounded"
-      >
-        + Add Desk
-      </button>
+    <aside className="w-56 shrink-0 border-r bg-white flex flex-col">
+      <form onSubmit={onSubmit} className="p-3 border-b">
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="New desk…"
+          className="w-full border rounded px-2 py-1 text-sm"
+        />
+      </form>
 
-      <div className="space-y-1">
-        {desks.map((d) => (
-          <Link
-            key={d.id}
-            to={`/desk/${d.id}`}
-            className={`block px-3 py-1 rounded ${
-              d.id === currentDeskId
-                ? 'bg-blue-500 text-white'
-                : 'hover:bg-slate-200'
-            }`}
-          >
-            {d.name}
-          </Link>
-        ))}
-      </div>
+      <nav className="flex-1 overflow-auto p-2 space-y-1">
+        {desks.map((d) => {
+          const active = pathname.includes(d.id);
+          return (
+            <Link
+              key={d.id}
+              to={`/desk/${d.id}`}
+              className={`block px-3 py-1 rounded text-sm ${
+                active ? "bg-indigo-600 text-white" : "hover:bg-gray-100"
+              }`}
+            >
+              {d.name}
+            </Link>
+          );
+        })}
+      </nav>
     </aside>
   );
 }

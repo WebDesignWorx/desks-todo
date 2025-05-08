@@ -1,33 +1,53 @@
-import { deleteTaskById, saveTask } from '../utils/idb';
+// src/pages/ArchiveList.jsx
+import React from 'react';
 
-export default function ArchiveList({ tasks, refresh }) {
-  const restore = async (t) => {
-    t.archived = false;
-    await saveTask(t);
-    refresh();
-  };
-  const del = async (id) => {
-    await deleteTaskById(id);
-    refresh();
-  };
+export default function ArchiveList({ tasks, onRestore, onDeletePermanent }) {
+  if (!tasks.length) {
+    return (
+      <div className="mt-4 bg-slate-50 p-4 rounded">
+        <h3 className="font-semibold mb-2">Archived</h3>
+        <p className="text-sm text-gray-500">No archived tasks.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="mt-4 bg-slate-50 p-4 rounded">
       <h3 className="font-semibold mb-2">Archived</h3>
-      {tasks.length === 0 && <p className="text-sm text-gray-500">No archived tasks.</p>}
-      {tasks.map((t) => (
-        <div key={t.id} className="flex justify-between items-center mb-1">
-          <span>{t.name}</span>
-          <div className="space-x-2 text-sm">
-            <button onClick={() => restore(t)} className="text-green-600">
-              restore
-            </button>
-            <button onClick={() => del(t.id)} className="text-red-600">
-              delete
-            </button>
-          </div>
-        </div>
-      ))}
+      <ul className="space-y-1">
+        {tasks.map((t) => (
+          <li
+            key={t.id}
+            className={`flex items-center justify-between px-2 py-1 rounded ${
+              t.done ? 'task-checked-done bg-white' : 'bg-gray-100'
+            }`}
+          >
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={t.done}
+                disabled
+                className="h-4 w-4"
+              />
+              <span className="flex-1">{t.name}</span>
+            </div>
+            <div className="space-x-2 text-sm">
+              <button
+                onClick={() => onRestore(t.id)}
+                className="text-green-600 hover:text-green-800"
+              >
+                restore
+              </button>
+              <button
+                onClick={() => onDeletePermanent(t.id)}
+                className="text-red-600 hover:text-red-800"
+              >
+                delete
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

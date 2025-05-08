@@ -1,164 +1,97 @@
-import { useEffect, useState, useRef } from 'react';
-import { useParams } from 'react-router-dom';
-
+import { useEffect, useState, useCallback } from "react";
+import { useParams } from "react-router-dom";
+import { SortableTree } from "../components/SortableTree";      // the new tree
 import {
   getTasksByDeskId,
   saveTask,
-  archiveTaskById,
-  pruneEmptyTasks,
-} from '../utils/idb.js';
-import ArchiveList from './ArchiveList';
-import TaskTree from '../components/TaskTree';
-import { v4 as uuidv4 } from 'uuid';
+  pruneEmptyTasks
+} from "../utils/idb";
+import { v4 as uuid } from "uuid";
+
+/* helpers to convert between DB flat list and tree component ---- */
+const makeTree = (flat) => {
+  const byId = Object.fromEntries(flat.map((t) => [t.id, { ...t, children: [] }]));
+  const root = [];
+  flat.forEach((t) => {
+    if (t.parent_id) byId[t.parent_id]?.children.push(byId[t.id]);
+    else root.push(byId[t.id]);
+  });
+  return root;
+};
+const flattenTree = (nodes, parentId = null, depth = 0, list = []) => {
+  nodes.forEach((n, i) => {
+    list.push({
+      ...n,
+      parent_id: parentId,
+      position: i,
+      depth,                             // not saved – just helper
+      children: undefined                // strip children for DB
+    });
+    flattenTree(n.children ?? [], n.id, depth + 1, list);
+  });
+  return list;
+};
+// ---------------------------------------------------------------
 
 export default function TaskPage() {
-  const { deskId } = useParams();
-  const [tasks, setTasks] = useState([]);
-  const addInputRef = useRef(null);
+  const { id: deskId } = useParams();
+  const [tree, setTree] = useState([]);
 
+  /* load + prune ---------------------------------------------- */
   useEffect(() => {
     (async () => {
       await pruneEmptyTasks(deskId);
-      const t = await getTasksByDeskId(deskId);
-      setTasks(t);
+      const tasks = await getTasksByDeskId(deskId, true /* include archive toggle in tree if you want */);
+      setTree(makeTree(tasks));
     })();
-    localStorage.setItem('lastDesk', deskId);
   }, [deskId]);
 
-    /* ---------- checkbox toggle --------------- */
-    const toggleDone = (id) =>
-    update(prev => {
-      console.log('here we are'); 
-      const next = prev.map(t =>
-        t.id === id ? { ...t, done: !t.done } : t
-      );
-      console.log('Will save', next.find(t => t.id === id)); 
-      return next;
-    });
-
-    
-/* ------- master updater (private) -------- */
-const update = (recipe) =>
-  setTasks((prev) => {
-    const next = recipe(prev);
-    next.forEach(saveTask);
-    return next;
-  });
-  
-    /* ---------- text edit --------------------- */
-    const changeText = (id, txt) =>
-        update((prev) =>
-          prev.map((t) =>
-            t.id === id ? { ...t, name: txt } : t
-          )
-        );
-    
-    /* ---------- archive (×) ------------------- */
-    const archive = (id) =>
-  update((prev) =>
-    prev.map((t) =>
-      t.id === id ? { ...t, archived: true } : t
-    )
+  /* persist any tree mutation --------------------------------- */
+  const persist = useCallback(
+    (newTree) => {
+      setTree(newTree);
+      // flatten + write every task (very small, happens on drop / text change)
+      flattenTree(newTree).forEach(saveTask);
+    },
+    [deskId]
   );
 
-
-  const [showArc, setShowArc] = useState(false);
-
-
-
-/* ------- persist wrapper for children ---- */
-const persist = (array) => update(() => array);
-    
-  const addRootTask = (text) => {
+  /* add at root level (Enter in footer) ------------------------ */
+  const addRootTask = (name) => {
     const t = {
-      id: uuidv4(),
+      id: uuid(),
       desk_id: deskId,
-      name: text,
-      parent_id: null,
-      position: Date.now(),
-    };
-    persist([...tasks, t]);
-  };
-
-  /* handed down to tree */
-  const onText = (id, txt) =>
-    persist(tasks.map((t) => (t.id === id ? { ...t, name: txt } : t)));
-
-  /* ---------- add below ---------- */
-const onBelow = (id) =>
-  update((prev) => {
-    const sibling = prev.find((t) => t.id === id);
-    const newTask = {
-      id: uuidv4(),
-      desk_id: sibling.desk_id,
-      parent_id: sibling.parent_id,
-      name: '',
+      name,
       done: false,
       archived: false,
-      position: sibling.position + 0.5, // temporary; will be renumbered
+      parent_id: null,
+      position: tree.length
     };
-    return [...prev, newTask];
-  });
-
-  const onChild = (parent) =>
-    persist([
-      ...tasks,
-      {
-        id: uuidv4(),
-        desk_id: deskId,
-        name: '',
-        parent_id: parent,
-        position: Date.now(),
-      },
-    ]);
+    persist([...tree, { ...t, children: [] }]);
+  };
 
   return (
-    <div className="flex flex-col h-full">
-      {tasks.length === 0 && (
-        <p className="text-gray-500 mb-4">No tasks yet — start by adding one.</p>
-      )}
+    <>
+      <SortableTree
+        items={tree}
+        setItems={persist}
+        indentationWidth={20}
+        collapsible
+        indicator
+        removable
+      />
 
-      {tasks.length > 0 && (
-        <TaskTree 
-            tasks={tasks}
-            setTasks={persist}
-            onTextChange={changeText}
-            onToggleDone={toggleDone}
-            onAddBelow={onBelow}
-            onAddChild={onChild}
-            onArchive={archive}
-        />
-      )}
-<button
-        className="text-blue-600 text-sm mt-2"
-        onClick={() => setShowArc(!showArc)}
-      >
-        {showArc ? '[ hide archive ]' : `[ show archive (${tasks.filter((t) => t.archived).length}) ]`}
-      </button>
-
-      {showArc && (
-        <ArchiveList
-          tasks={tasks.filter((t) => t.archived)}
-          refresh={async () => {
-            const fresh = await getTasksByDeskId(deskId);
-            setTasks(fresh);
-          }}
-        />
-      )}
-      <div className="mt-auto pt-4">
-        <input
-          ref={addInputRef}
-          className="border rounded px-3 py-2 w-full"
-          placeholder="Add task…"
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && e.currentTarget.value.trim()) {
-              const txt = e.currentTarget.value.trim();
-              e.currentTarget.value = '';
-              addRootTask(txt);
-            }
-          }}
-        />
-      </div>
-    </div>
+      {/* quick-add input */}
+      <input
+        placeholder="Add task…"
+        className="mt-4 w-full border rounded px-3 py-2"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && e.currentTarget.value.trim()) {
+            addRootTask(e.currentTarget.value.trim());
+            e.currentTarget.value = "";
+          }
+        }}
+      />
+    </>
   );
 }

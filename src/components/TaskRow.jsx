@@ -1,94 +1,98 @@
-import { useEffect, useRef, useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import MarkdownIt from 'markdown-it';
+const md = new MarkdownIt({ html: false, linkify: true });
 
 export default function TaskRow({
   task,
   depth,
+  caret = false,
+  collapsed = false,
+  onCaretToggle,
   onToggleDone,
+  prefix,
   onTextChange,
   onAddBelow,
   onAddChild,
   onArchive,
   dragAttributes,
   dragListeners,
-  setDragRef,
 }) {
   const [editing, setEditing] = useState(!task.name);
-  const [value, setValue] = useState(task.name);
+  const [val, setVal] = useState(task.name || '');
   const inputRef = useRef();
 
-  /* auto‑focus when editing starts */
-  useEffect(() => {
-    if (editing) inputRef.current?.focus();
-  }, [editing]);
+  /* focus when entering edit */
+  useEffect(() => { if (editing) inputRef.current?.focus(); }, [editing]);
+  useEffect(() => setVal(task.name || ''), [task.name]);
 
-  /* commit text change */
   const commit = () => {
-    const trimmed = value.trim();
+    const txt = val.trim();
     setEditing(false);
-    if (trimmed !== task.name) onTextChange(task.id, trimmed);
+    if (txt !== task.name) onTextChange(task.id, txt);
   };
 
   return (
-    <li
-      ref={setDragRef}
-      {...dragAttributes}
-      {...dragListeners}
-      style={{ paddingLeft: depth * 24 }}
-      className="task-row flex items-center gap-2 mb-1 group"
+    <div
+      className={`spr-row group ${task.done ? 'spr-done' : ''}`}
+      style={{ paddingLeft: depth * 20 }}
     >
-      {/* checkbox */}
+      {caret ? (
+        <button
+          onClick={onCaretToggle}
+          className="spr-caret"
+          aria-label={collapsed ? 'Expand' : 'Collapse'}
+        >
+          {collapsed ? '▸' : '▾'}
+        </button>
+      ) : (
+        <span className="spr-caret-placeholder" />
+      )}
+        {prefix}
+      <span
+        {...dragAttributes}
+        {...dragListeners}
+        className="spr-handle opacity-0 group-hover:opacity-100"
+      >
+        ═
+      </span>
+
       <input
         type="checkbox"
         checked={task.done}
-        onChange={() => {
-            console.log('✅ TaskRow onToggleDone(', task.id, ')');
-            onToggleDone(task.id);
-        }}
+        onChange={() => onToggleDone(task.id)}
+        className="mr-2"
       />
 
-      {/* drag handle */}
-      <span className="task-handle cursor-move opacity-0 group-hover:opacity-100">
-        ☰
-      </span>
-
-      {/* title or input */}
       {editing ? (
         <input
           ref={inputRef}
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
+          value={val}
+          onChange={(e) => setVal(e.target.value)}
           onBlur={commit}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              commit();
-              onAddBelow(task.id);
-            } else if (e.key === 'Tab') {
-              e.preventDefault();
-              commit();
-              onAddChild(task.id);
-            }
+            if (e.key === 'Enter') { commit(); onAddBelow(task.id); }
+            if (e.key === 'Tab')  { e.preventDefault(); commit(); onAddChild(task.id); }
           }}
-          className="flex-1 bg-transparent outline-none border-b border-indigo-300"
+          className="spr-input"
         />
       ) : (
-            <div
-              onDoubleClick={() => setEditing(true)}
-              className={`flex-1 select-none ${
-                task.done ? 'task-checked-done' : ''
-              }`}
-            >
-          {task.name || <em className="text-neutral-400">[empty]</em>}
-        </div>
+        <div
+          onDoubleClick={() => setEditing(true)}
+          className="flex-1 select-none"
+          dangerouslySetInnerHTML={{
+            __html: task.name
+              ? md.renderInline(task.name)
+              : '<em class="text-gray-400">[empty]</em>',
+          }}
+        />
       )}
 
-      {/* archive (×) */}
       <button
         onClick={() => onArchive(task.id)}
-        className="text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100"
-        title="Archive"
+        className="spr-archive opacity-0 group-hover:opacity-100"
       >
         ×
       </button>
-    </li>
+    </div>
   );
 }

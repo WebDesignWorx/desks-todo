@@ -1,60 +1,60 @@
-import { useEffect, useState } from 'react';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import Header from './components/Header';
-import Sidebar from './components/Sidebar';
-import NewDeskForm from './pages/NewDeskForm';
-import TaskPage from './pages/TaskPage';
-import { openDB, getAllDesks } from './utils/idb.js';
+import { useEffect, useState } from "react";
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import Header   from "./components/Header";
+import Sidebar  from "./components/Sidebar";
+import TaskPage from "./pages/TaskPage";
+import { getAllDesks, saveDesk } from "./utils/idb";
+import { v4 as uuid } from "uuid";
 
 export default function App() {
-    const [desks, setDesks] = useState([]);
-    const location = useLocation();
-    const currentDeskId =
-        location.pathname.startsWith('/desk/') &&
-        location.pathname.split('/desk/')[1];
-    const [addingDesk, setAddingDesk] = useState(false);   // 🔹 new flag
-  /* load desks at boot */
+  const [desks, setDesks] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // ── load desks once ──────────────────────────────────────────
   useEffect(() => {
-    openDB().then(() => getAllDesks().then(setDesks));
+    getAllDesks().then((d) => {
+      setDesks(d);
+      setLoading(false);
+    });
   }, []);
 
-  /* redirect / to last desk if exists */
-  useEffect(() => {
-    if (location.pathname === '/') {
-      const last = localStorage.getItem('lastDesk');
-      if (last) window.location.replace(`/desk/${last}`);
-    }
-  }, [location.pathname]);
+  const addDesk = async (name) => {
+    const desk = { id: uuid(), name: name.trim() };
+    await saveDesk(desk);
+    setDesks((prev) => [...prev, desk]);
+    return desk.id;
+  };
+
+  if (loading) return null;
 
   return (
-    <div className="h-screen flex flex-col">
-      <Header />
-
-      <div className="flex flex-1">
-        <Sidebar
-          desks={desks}
-          currentDeskId={currentDeskId}
-          startAddDesk={() => {
-            setAddingDesk(true);
-            if (location.pathname !== '/') window.history.replaceState(null, '', '/');
-          }}
-        />
-
-        <main className="flex-1 p-6 overflow-y-auto bg-gray-100">
-           {addingDesk ? (
-            <NewDeskForm
-              onDone={() => setAddingDesk(false)}
-              onCreate={(d) => setDesks((prev) => [...prev, d])}
-            />
-          ) : (
+    <BrowserRouter>
+      <div className="h-screen flex flex-col">
+        <Header />
+        <div className="flex flex-1 overflow-hidden">
+          <Sidebar desks={desks} addDesk={addDesk} />
+          <main className="flex-1 overflow-auto p-6 bg-gray-50">
             <Routes>
-              <Route path="/" element={<p>Select or add a desk to begin.</p>} />
-              <Route path="/desk/:deskId" element={<TaskPage />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
+              <Route path="/"          element={<HomeRedirect desks={desks} />} />
+              <Route path="/desk/:id"  element={<TaskPage />} />
+              <Route path="*"          element={<Navigate to="/" />} />
             </Routes>
-          )}
-        </main>
+          </main>
+        </div>
       </div>
-    </div>
+    </BrowserRouter>
+  );
+}
+
+/* send first-ever user to first desk (or prompt to create) */
+function HomeRedirect({ desks }) {
+  const nav = useNavigate();
+  useEffect(() => {
+    if (desks.length) nav(`/desk/${desks[0].id}`, { replace: true });
+  }, [desks]);
+  return desks.length ? null : (
+    <p className="text-center text-gray-500 mt-20">
+      No desks yet – create one with “Add Desk” →
+    </p>
   );
 }
